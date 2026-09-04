@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://kit.fontawesome.com/29651093c0.js" crossorigin="anonymous"></script>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --green: #16a34a;
+      --red: #dc2626;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 20px;
+    }
+
+    /* ==================================================
+       BUSCADOR
+       ================================================== */
+
+    .search-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #fff;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 12px;
+      transition: 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 11px 17px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-search {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-search:hover {
+      background: var(--blue-dark);
+    }
+
+    .btn-upload {
+      background: white;
+      color: #374151;
+      border-color: var(--border);
+    }
+
+    .btn-upload:hover {
+      background: #f3f4f6;
+    }
+
+    /* ==================================================
+       ARCHIVO
+       ================================================== */
+
+    .file-name {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ==================================================
+       ESTADO
+       ================================================== */
+
+    .status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: none;
+      font-size: 13px;
+    }
+
+    .status.info {
+      display: block;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .status.success {
+      display: block;
+      background: #f0fdf4;
+      color: var(--green);
+      border: 1px solid #bbf7d0;
+    }
+
+    .status.error {
+      display: block;
+      background: #fef2f2;
+      color: var(--red);
+      border: 1px solid #fecaca;
+    }
+
+    /* ==================================================
+       RESULTADOS
+       ================================================== */
+
+    .results {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .results-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .result {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 10px;
+      background: white;
+    }
+
+    .result-name {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .result-type {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 9px;
+    }
+
+    .match {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 9px;
+    }
+
+    .fragment {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #4b5563;
+      background: #f9fafb;
+      border: 1px solid #f0f1f3;
+      border-radius: 7px;
+      padding: 9px 10px;
+      margin-bottom: 10px;
+    }
+
+    .open-button {
+      background: white;
+      color: #374151;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      padding: 8px 12px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 42px 10px;
+      font-size: 13px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 11px;
+      margin-top: 16px;
+    }
+
+
+    /* ==================================================
+       PANTALLA DE CARGA
+       ================================================== */
+
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+
+      background: rgba(247, 248, 250, 0.94);
+
+      backdrop-filter: blur(4px);
+
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+
+      z-index: 9999;
+    }
+
+    .loading-screen.active {
+      display: flex;
+    }
+
+
+    /* ==================================================
+       CAJA DE CARGA
+       ================================================== */
+
+    .loading-box {
+      width: min(440px, calc(100% - 40px));
+
+      background: white;
+
+      border: 1px solid #e5e7eb;
+
+      border-radius: 16px;
+
+      padding: 32px;
+
+      text-align: center;
+
+      box-shadow:
+        0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+
+    /* ==================================================
+       ICONO DE CARGA
+       ================================================== */
+
+    .loading-spinner {
+      width: 58px;
+      height: 58px;
+
+      margin: 0 auto 22px;
+
+      border-radius: 50%;
+
+      border: 5px solid #e5e7eb;
+
+      border-top-color: var(--blue);
+
+      animation:
+        loadingSpin 0.8s linear infinite;
+    }
+
+    @keyframes loadingSpin {
+
+      to {
+        transform: rotate(360deg);
+      }
+
+    }
+
+
+    /* ==================================================
+       ICONO DE ÉXITO
+       ================================================== */
+
+    .success-icon {
+
+      width: 58px;
+      height: 58px;
+
+      margin: 0 auto 22px;
+
+      border-radius: 50%;
+
+      background: #dcfce7;
+
+      color: #16a34a;
+
+      display: none;
+
+      align-items: center;
+      justify-content: center;
+
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+
+    /* ==================================================
+       TITULO CARGA
+       ================================================== */
+
+    .loading-title {
+
+      font-size: 20px;
+
+      font-weight: 700;
+
+      color: #111827;
+
+      margin-bottom: 7px;
+    }
+
+
+    /* ==================================================
+       MENSAJE CARGA
+       ================================================== */
+
+    .loading-message {
+
+      font-size: 13px;
+
+      color: #6b7280;
+
+      min-height: 20px;
+
+      margin-bottom: 20px;
+    }
+
+
+    /* ==================================================
+       PORCENTAJE
+       ================================================== */
+
+    .loading-percent {
+
+      font-size: 13px;
+
+      font-weight: 700;
+
+      color: #374151;
+
+      margin-bottom: 8px;
+
+      text-align: right;
+    }
+
+
+    /* ==================================================
+       BARRA
+       ================================================== */
+
+    .progress-container {
+
+      width: 100%;
+
+      height: 8px;
+
+      background: #e5e7eb;
+
+      border-radius: 20px;
+
+      overflow: hidden;
+    }
+
+
+    .progress-bar {
+
+      width: 0%;
+
+      height: 100%;
+
+      background: var(--blue);
+
+      border-radius: 20px;
+
+      transition:
+        width 0.1s linear;
+    }
+
+
+    /* ==================================================
+       MODO ÉXITO
+       ================================================== */
+
+    .loading-box.success-mode
+    .loading-spinner {
+
+      display: none;
+    }
+
+    .loading-box.success-mode
+    .success-icon {
+
+      display: flex;
+    }
+
+    .loading-box.success-mode
+    .progress-bar {
+
+      background: var(--green);
+    }
+
+
+    /* ==================================================
+       MOBILE
+       ================================================== */
+
+    @media (max-width: 600px) {
+
+      .app {
+        margin: 8px auto;
+        padding: 12px;
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .loading-box {
+        padding: 26px 22px;
+      }
+
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+
+  <div class="app">
+
+
+    <!-- =================================================
+         BUSCADOR
+         ================================================= -->
+
+    <div class="search-box">
+
+      <input
+        id="searchInput"
+        class="search-input"
+        type="text"
+        placeholder="Escribe una palabra, nombre, número o frase..."
+        onkeydown="enterBuscar(event)"
+      >
+
+
+      <div class="buttons">
+
+        <button
+          id="searchButton"
+          class="btn-search"
+          onclick="buscar()"
+        >
+          <i class="fa-solid fa-magnifying-glass"></i>
+            Buscar
+        </button>
+
+
+        <button
+          id="uploadButton"
+          class="btn-upload"
+          onclick="seleccionarArchivo()"
+        >
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        Subir documento
+        </button>
+
+      </div>
+
+
+      <form
+        id="uploadForm"
+        style="display:none"
+        onsubmit="subir(this)"
+      >
+
+        <input
+          id="fileInput"
+          name="archivo"
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"
+        >
+
+      </form>
+
+
+      <div
+        id="selectedFile"
+        class="file-name"
+      ></div>
+
+
+      <div
+        id="status"
+        class="status"
+      ></div>
+
+    </div>
+
+
+    <!-- =================================================
+         RESULTADOS
+         ================================================= -->
+
+    <div class="results">
+
+      <div class="results-title">
+        Resultados
+      </div>
+
+
+      <div id="resultsContainer">
+
+        <div class="empty">
+
+          <div style="font-size:22px;">
+            ⌕
+          </div>
+
+          <br>
+
+          Escribe algo en el buscador
+          para comenzar.
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="footer">
+        <i class="fa-solid fa-gears"></i>
+      Sistema de gestión documental · Google Drive + Gemini<br>
+      by adaportich@gmail.com
+
+        <br>CODEPEDIS
+      <i class="fa-regular fa-copyright"></i> 2026
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================
+       PANTALLA DE CARGA
+       =================================================== -->
+
+  <div
+    id="loadingScreen"
+    class="loading-screen"
+  >
+
+    <div
+      id="loadingBox"
+      class="loading-box"
+    >
+
+
+      <!-- SPINNER -->
+
+      <div
+        id="loadingSpinner"
+        class="loading-spinner"
+      ></div>
+
+
+      <!-- ÉXITO -->
+
+      <div
+        id="successIcon"
+        class="success-icon"
+      >
+        ✓
+      </div>
+
+
+      <!-- TITULO -->
+
+      <div
+        id="loadingTitle"
+        class="loading-title"
+      >
+        Buscando
+      </div>
+
+
+      <!-- MENSAJE -->
+
+      <div
+        id="loadingMessage"
+        class="loading-message"
+      >
+        Preparando búsqueda...
+      </div>
+
+
+      <!-- PORCENTAJE -->
+
+      <div
+        id="loadingPercent"
+        class="loading-percent"
+      >
+        0%
+      </div>
+
+
+      <!-- BARRA -->
+
+      <div class="progress-container">
+
+        <div
+          id="progressBar"
+          class="progress-bar"
+        ></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+
+    /* ==================================================
+       ELEMENTOS
+       ================================================== */
+
+    const searchInput =
+      document.getElementById(
+        'searchInput'
+      );
+
+    const searchButton =
+      document.getElementById(
+        'searchButton'
+      );
+
+    const uploadButton =
+      document.getElementById(
+        'uploadButton'
+      );
+
+    const fileInput =
+      document.getElementById(
+        'fileInput'
+      );
+
+    const uploadForm =
+      document.getElementById(
+        'uploadForm'
+      );
+
+    const status =
+      document.getElementById(
+        'status'
+      );
+
+    const resultsContainer =
+      document.getElementById(
+        'resultsContainer'
+      );
+
+    const selectedFile =
+      document.getElementById(
+        'selectedFile'
+      );
+
+
+    /* ==================================================
+       ELEMENTOS DE CARGA
+       ================================================== */
+
+    const loadingScreen =
+      document.getElementById(
+        'loadingScreen'
+      );
+
+    const loadingBox =
+      document.getElementById(
+        'loadingBox'
+      );
+
+    const loadingTitle =
+      document.getElementById(
+        'loadingTitle'
+      );
+
+    const loadingMessage =
+      document.getElementById(
+        'loadingMessage'
+      );
+
+    const loadingPercent =
+      document.getElementById(
+        'loadingPercent'
+      );
+
+    const progressBar =
+      document.getElementById(
+        'progressBar'
+      );
+
+
+    /* ==================================================
+       VARIABLES DE CARGA
+       ================================================== */
+
+    let progressTimer = null;
+
+    let progressValue = 0;
+
+    let progressMode = 'buscar';
+
+
+    /* ==================================================
+       ENTER
+       ================================================== */
+
+    function enterBuscar(event) {
+
+      if (event.key === 'Enter') {
+
+        buscar();
+
+      }
+
+    }
+
+
+    /* ==================================================
+       MOSTRAR ESTADO
+       ================================================== */
+
+    function mostrarEstado(
+      mensaje,
+      tipo
+    ) {
+
+      status.textContent =
+        mensaje;
+
+      status.className =
+        'status ' + tipo;
+
+    }
+
+
+    /* ==================================================
+       INICIAR PANTALLA DE CARGA
+       ================================================== */
+
+    function iniciarCarga(
+      modo
+    ) {
+
+      progressMode = modo;
+
+      progressValue = 0;
+
+      loadingBox.classList.remove(
+        'success-mode'
+      );
+
+      loadingScreen.classList.add(
+        'active'
+      );
+
+
+      progressBar.style.width =
+        '0%';
+
+      loadingPercent.textContent =
+        '0%';
+
+
+      if (modo === 'buscar') {
+
+        loadingTitle.textContent =
+          'Buscando documentos';
+
+        loadingMessage.textContent =
+          'Preparando búsqueda...';
+
+      }
+
+
+      if (modo === 'subir') {
+
+        loadingTitle.textContent =
+          'Subiendo documento';
+
+        loadingMessage.textContent =
+          'Preparando archivo...';
+
+      }
+
+
+      /* -----------------------------------------------
+         ACTUALIZACIÓN VISUAL CADA 100 MS
+         ----------------------------------------------- */
+
+      progressTimer =
+        setInterval(
+
+          function() {
+
+            if (
+              progressValue < 90
+            ) {
+
+              /*
+               * Progreso rápido al principio
+               * y lento al acercarse al 90%.
+               */
+
+              if (
+                progressValue < 50
+              ) {
+
+                progressValue += 2;
+
+              } else if (
+                progressValue < 75
+              ) {
+
+                progressValue += 1;
+
+              } else {
+
+                progressValue += 0.3;
+
+              }
+
+
+              actualizarProgreso();
+
+              actualizarMensaje();
+
+            }
+
+          },
+
+          100
+
+        );
+
+    }
+
+
+    /* ==================================================
+       ACTUALIZAR PROGRESO
+       ================================================== */
+
+    function actualizarProgreso() {
+
+      const porcentaje =
+        Math.min(
+          Math.floor(progressValue),
+          90
+        );
+
+      progressBar.style.width =
+        porcentaje + '%';
+
+      loadingPercent.textContent =
+        porcentaje + '%';
+
+    }
+
+
+    /* ==================================================
+       MENSAJES DINÁMICOS
+       ================================================== */
+
+    function actualizarMensaje() {
+
+      const p =
+        progressValue;
+
+
+      if (progressMode === 'buscar') {
+
+        if (p < 25) {
+
+          loadingMessage.textContent =
+            'Analizando consulta...';
+
+        } else if (p < 50) {
+
+          loadingMessage.textContent =
+            'Buscando documentos...';
+
+        } else if (p < 75) {
+
+          loadingMessage.textContent =
+            'Analizando coincidencias...';
+
+        } else {
+
+          loadingMessage.textContent =
+            'Preparando resultados...';
+
+        }
+
+      }
+
+
+      if (progressMode === 'subir') {
+
+        if (p < 20) {
+
+          loadingMessage.textContent =
+            'Preparando archivo...';
+
+        } else if (p < 45) {
+
+          loadingMessage.textContent =
+            'Subiendo archivo...';
+
+        } else if (p < 70) {
+
+          loadingMessage.textContent =
+            'Procesando documento...';
+
+        } else {
+
+          loadingMessage.textContent =
+            'Agregando documento al índice...';
+
+        }
+
+      }
+
+    }
+
+
+    /* ==================================================
+       COMPLETAR CARGA
+       ================================================== */
+
+    function completarCarga(
+      mensaje
+    ) {
+
+      if (progressTimer) {
+
+        clearInterval(
+          progressTimer
+        );
+
+        progressTimer = null;
+
+      }
+
+
+      progressValue = 100;
+
+
+      progressBar.style.width =
+        '100%';
+
+      loadingPercent.textContent =
+        '100%';
+
+
+      loadingBox.classList.add(
+        'success-mode'
+      );
+
+
+      loadingTitle.textContent =
+        progressMode === 'subir'
+          ? 'Subido exitosamente'
+          : 'Búsqueda completada';
+
+
+      loadingMessage.textContent =
+        mensaje;
+
+
+      /*
+       * Dejamos el mensaje de éxito
+       * visible durante un momento.
+       */
+
+      setTimeout(
+        function() {
+
+          cerrarCarga();
+
+        },
+        700
+      );
+
+    }
+
+
+    /* ==================================================
+       CERRAR CARGA
+       ================================================== */
+
+    function cerrarCarga() {
+
+      if (progressTimer) {
+
+        clearInterval(
+          progressTimer
+        );
+
+        progressTimer = null;
+
+      }
+
+      loadingScreen.classList.remove(
+        'active'
+      );
+
+    }
+
+
+    /* ==================================================
+       BUSCAR
+       ================================================== */
+
+    function buscar() {
+
+      const consulta =
+        searchInput.value.trim();
+
+
+      if (!consulta) {
+
+        mostrarEstado(
+          'Escribe algo para buscar.',
+          'error'
+        );
+
+        return;
+
+      }
+
+
+      searchButton.disabled =
+        true;
+
+      uploadButton.disabled =
+        true;
+
+
+      iniciarCarga(
+        'buscar'
+      );
+
+
+      google.script.run
+
+        .withSuccessHandler(
+          mostrarResultados
+        )
+
+        .withFailureHandler(
+          mostrarError
+        )
+
+        .buscarDocumentos(
+          consulta
+        );
+
+    }
+
+
+    /* ==================================================
+       MOSTRAR RESULTADOS
+       ================================================== */
+
+    function mostrarResultados(
+      resultados
+    ) {
+
+      completarCarga(
+        'Documentos encontrados correctamente.'
+      );
+
+
+      searchButton.disabled =
+        false;
+
+      uploadButton.disabled =
+        false;
+
+
+      if (
+        !resultados ||
+        resultados.length === 0
+      ) {
+
+        mostrarEstado(
+          'No se encontraron coincidencias.',
+          'info'
+        );
+
+
+        resultsContainer.innerHTML = `
+
+          <div class="empty">
+
+            <div style="font-size:22px;">
+              ⌕
+            </div>
+
+            <br>
+
+            No se encontraron documentos
+            que coincidan con la búsqueda.
+
+          </div>
+
+        `;
+
+        return;
+
+      }
+
+
+      mostrarEstado(
+
+        'Se encontraron ' +
+        resultados.length +
+        ' documento(s).',
+
+        'success'
+
+      );
+
+
+      let html = '';
+
+
+      resultados.forEach(
+        function(resultado) {
+
+          html += `
+
+            <div class="result">
+
+              <div class="result-name">
+
+                📄
+                ${escaparHTML(
+                  resultado.nombre
+                )}
+
+              </div>
+
+
+              <div class="result-type">
+
+                ${escaparHTML(
+                  resultado.tipo
+                )}
+
+              </div>
+
+
+              <div class="match">
+
+                ${resultado.coincidencias}
+                coincidencia(s)
+
+              </div>
+
+
+              <div class="fragment">
+
+                ${escaparHTML(
+                  resultado.fragmento
+                )}
+
+              </div>
+
+
+              <button
+                class="open-button"
+                onclick="abrirDocumento(
+                  '${escaparHTML(
+                    resultado.url
+                  )}'
+                )"
+              >
+
+                Abrir documento
+                <i class="fa-regular fa-file"></i>
+
+              </button>
+
+            </div>
+
+          `;
+
+        }
+      );
+
+
+      resultsContainer.innerHTML =
+        html;
+
+    }
+
+
+    /* ==================================================
+       ABRIR DOCUMENTO
+       ================================================== */
+
+    function abrirDocumento(
+      url
+    ) {
+
+      window.open(
+        url,
+        '_blank'
+      );
+
+    }
+
+
+    /* ==================================================
+       SELECCIONAR ARCHIVO
+       ================================================== */
+
+    function seleccionarArchivo() {
+
+      fileInput.click();
+
+    }
+
+
+    /* ==================================================
+       ARCHIVO SELECCIONADO
+       ================================================== */
+
+    fileInput.addEventListener(
+      'change',
+      function() {
+
+        if (
+          !fileInput.files ||
+          !fileInput.files.length
+        ) {
+
+          selectedFile.textContent =
+            '';
+
+          return;
+
+        }
+
+
+        const archivo =
+          fileInput.files[0];
+
+
+        selectedFile.textContent =
+          'Archivo seleccionado: ' +
+          archivo.name;
+
+
+        subir(
+          uploadForm
+        );
+
+      }
+    );
+
+
+    /* ==================================================
+       SUBIR
+       ================================================== */
+
+    function subir(
+      formulario
+    ) {
+
+      const archivo =
+        fileInput.files[0];
+
+
+      if (!archivo) {
+
+        mostrarEstado(
+          'Selecciona un archivo.',
+          'error'
+        );
+
+        return;
+
+      }
+
+
+      searchButton.disabled =
+        true;
+
+      uploadButton.disabled =
+        true;
+
+
+      iniciarCarga(
+        'subir'
+      );
+
+
+      google.script.run
+
+        .withSuccessHandler(
+          subidaCorrecta
+        )
+
+        .withFailureHandler(
+          mostrarError
+        )
+
+        .subirDocumento(
+          formulario
+        );
+
+    }
+
+
+    /* ==================================================
+       SUBIDA CORRECTA
+       ================================================== */
+
+    function subidaCorrecta(
+      resultado
+    ) {
+
+      completarCarga(
+        'El documento fue procesado correctamente.'
+      );
+
+
+      searchButton.disabled =
+        false;
+
+      uploadButton.disabled =
+        false;
+
+
+      mostrarEstado(
+
+        '✅ ' +
+        resultado.mensaje,
+
+        'success'
+
+      );
+
+
+      selectedFile.textContent =
+        resultado.nombre;
+
+
+      fileInput.value =
+        '';
+
+
+      resultsContainer.innerHTML = `
+
+        <div class="result">
+
+          <div class="result-name">
+
+            📄
+            ${escaparHTML(
+              resultado.nombre
+            )}
+
+          </div>
+
+
+          <div class="result-type">
+
+            ${escaparHTML(
+              resultado.tipo
+            )}
+
+          </div>
+
+
+          <div class="match">
+
+            Documento procesado correctamente
+
+          </div>
+
+
+          <div class="fragment">
+
+            El documento fue almacenado
+            y agregado al índice de búsqueda.
+
+          </div>
+
+
+          <button
+            class="open-button"
+            onclick="abrirDocumento(
+              '${escaparHTML(
+                resultado.url
+              )}'
+            )"
+          >
+
+            <i class="fa-regular fa-file"></i>
+            Abrir documento
+
+          </button>
+
+        </div>
+
+      `;
+
+    }
+
+
+    /* ==================================================
+       ERROR
+       ================================================== */
+
+    function mostrarError(
+      error
+    ) {
+
+      cerrarCarga();
+
+
+      searchButton.disabled =
+        false;
+
+      uploadButton.disabled =
+        false;
+
+
+      let mensaje =
+        'Ocurrió un error.';
+
+
+      if (
+        error &&
+        error.message
+      ) {
+
+        mensaje =
+          error.message;
+
+      }
+
+
+      mostrarEstado(
+        '❌ ' + mensaje,
+        'error'
+      );
+
+    }
+
+
+    /* ==================================================
+       ESCAPAR HTML
+       ================================================== */
+
+    function escaparHTML(
+      texto
+    ) {
+
+      if (
+        texto === null ||
+        texto === undefined
+      ) {
+
+        return '';
+
+      }
+
+
+      return String(texto)
+
+        .replace(
+          /&/g,
+          '&amp;'
+        )
+
+        .replace(
+          /</g,
+          '&lt;'
+        )
+
+        .replace(
+          />/g,
+          '&gt;'
+        )
+
+        .replace(
+          /"/g,
+          '&quot;'
+        )
+
+        .replace(
+          /'/g,
+          '&#039;'
+        );
+
+    }
+
+  </script>
+
+</body>
+</html>
