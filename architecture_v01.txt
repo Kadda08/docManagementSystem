@@ -1,0 +1,706 @@
+
+### La arquitectura
+
+```text
+                         INTERNET
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │     PÁGINA WEB      │
+                 │                     │
+                 │ HTML + CSS + JS     │
+                 │                     │
+                 │ Login               │
+                 │ Dashboard           │
+                 │ Subir documentos    │
+                 │ Ver resultados      │
+                 └──────────┬──────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │   SUPABASE    │
+                    │               │
+                    │ 👤 Usuarios   │
+                    │ 🔐 Permisos   │
+                    │ 🗄️ Base datos │
+                    │ 📁 Archivos   │
+                    └───────┬───────┘
+                            │
+                            ▼
+                     ┌─────────────┐
+                     │   BACKEND   │
+                     │             │
+                     │ Procesa     │
+                     │ documentos  │
+                     └──────┬──────┘
+                            │
+                            ▼
+                     ┌─────────────┐
+                     │   GEMINI    │
+                     │             │
+                     │ OCR / IA    │
+                     └─────────────┘
+```
+
+Supabase es un servicio basado en **PostgreSQL** que además proporciona autenticación, almacenamiento de archivos, APIs y otras herramientas para aplicaciones web.
+
+---
+
+# 1. ¿Dónde estarían tus usuarios?
+
+Supongamos que tienes:
+
+```text
+Administrador
+Juan
+María
+Pedro
+```
+
+Supabase Auth puede encargarse de registrar y autenticar esas cuentas.
+
+Tu página tendría:
+
+```text
+┌──────────────────────────────────┐
+│       SISTEMA DE DOCUMENTOS      │
+│                                  │
+│ Usuario:                         │
+│ [ juan@email.com             ]   │
+│                                  │
+│ Contraseña:                      │
+│ [ **************             ]   │
+│                                  │
+│          [ INICIAR SESIÓN ]      │
+└──────────────────────────────────┘
+```
+
+Cuando Juan inicia sesión, Supabase verifica sus credenciales.
+
+Tu página recibe una sesión autenticada.
+
+Entonces puedes saber:
+
+```text
+Usuario:
+Juan
+
+ID:
+abc123...
+
+Rol:
+operador
+```
+
+Y esto es fundamental porque posteriormente podemos asociar **cada documento con el usuario que lo subió**.
+
+---
+
+# 2. Supabase tendría tu base de datos
+
+Aquí está probablemente la parte que más te interesa.
+
+Supongamos que tenemos una tabla:
+
+```text
+usuarios
+```
+
+con:
+
+| id | nombre | email                                       | rol      |
+| -- | ------ | ------------------------------------------- | -------- |
+| 1  | Carlos | [carlos@email.com](mailto:carlos@email.com) | admin    |
+| 2  | Juan   | [juan@email.com](mailto:juan@email.com)     | operador |
+| 3  | María  | [maria@email.com](mailto:maria@email.com)   | consulta |
+
+Luego otra:
+
+```text
+documentos
+```
+
+| id  | usuario_id | archivo       | estado    | resultado |
+| --- | ---------- | ------------- | --------- | --------- |
+| 101 | 2          | contrato.jpg  | procesado | ...       |
+| 102 | 2          | factura.png   | pendiente | ...       |
+| 103 | 3          | documento.pdf | procesado | ...       |
+
+Y otra:
+
+```text
+procesamientos
+```
+
+| id | documento_id | motor  | estado     | fecha |
+| -- | ------------ | ------ | ---------- | ----- |
+| 1  | 101          | Gemini | completado | ...   |
+| 2  | 102          | Gemini | procesando | ...   |
+
+---
+
+# 3. Supabase Storage guarda los archivos
+
+Aquí hay una diferencia importante.
+
+**La base de datos no debería guardar directamente tus JPG/PNG/PDF grandes.**
+
+Para eso utilizaríamos:
+
+**Supabase Storage.**
+
+Podríamos tener:
+
+```text
+Storage
+│
+└── documentos
+    │
+    ├── originales
+    │   ├── contrato001.jpg
+    │   ├── factura002.png
+    │   └── documento003.pdf
+    │
+    ├── procesados
+    │   ├── contrato001.docx
+    │   ├── factura002.docx
+    │   └── documento003.pdf
+    │
+    └── temporales
+```
+
+Y en PostgreSQL simplemente guardaríamos referencias:
+
+```text
+documentos
+
+id: 101
+usuario_id: 2
+archivo_original: documentos/originales/contrato001.jpg
+archivo_resultado: documentos/procesados/contrato001.docx
+estado: completado
+```
+
+---
+
+# 4. ¿Qué ocurre cuando alguien sube una imagen?
+
+Imagina que Juan entra al sistema.
+
+Ve:
+
+```text
+╔══════════════════════════════════╗
+║       DIGITALIZAR DOCUMENTO      ║
+╠══════════════════════════════════╣
+║                                  ║
+║   Arrastra aquí tu documento     ║
+║                                  ║
+║       JPG PNG PDF                ║
+║                                  ║
+║        [ SELECCIONAR ]           ║
+║                                  ║
+╚══════════════════════════════════╝
+```
+
+Juan selecciona:
+
+```text
+contrato.jpg
+```
+
+Tu JavaScript hace la solicitud.
+
+```text
+contrato.jpg
+      │
+      ▼
+Supabase Storage
+      │
+      ▼
+archivo almacenado
+```
+
+Después creamos un registro:
+
+```text
+documentos
+
+id: 154
+usuario_id: 2
+archivo: contrato.jpg
+estado: pendiente
+```
+
+---
+
+# 5. Después entra Gemini
+
+Aquí Supabase **no hace OCR**.
+
+Eso sería trabajo de Gemini.
+
+Nuestro backend detecta:
+
+```text
+documento 154
+estado = pendiente
+```
+
+y obtiene el archivo.
+
+Después:
+
+```text
+                 contrato.jpg
+                      │
+                      ▼
+                   Gemini
+                      │
+              ┌───────┴────────┐
+              ▼                ▼
+            TEXTO            ESTRUCTURA
+              │                │
+              └───────┬────────┘
+                      ▼
+              resultado OCR
+```
+
+Gemini podría devolver:
+
+```json
+{
+  "titulo": "CONTRATO DE ARRENDAMIENTO",
+  "texto": "En la ciudad de...",
+  "paginas": 3,
+  "tablas": [],
+  "confianza": 0.96
+}
+```
+
+Y entonces guardamos ese resultado en Supabase.
+
+---
+
+# 6. Supabase permite actualizar el estado
+
+Antes:
+
+```text
+estado = pendiente
+```
+
+Mientras Gemini trabaja:
+
+```text
+estado = procesando
+```
+
+Cuando termina:
+
+```text
+estado = completado
+```
+
+Si ocurre un problema:
+
+```text
+estado = error
+```
+
+Por eso tu panel administrativo podría mostrar:
+
+```text
+DOCUMENTOS
+────────────────────────────────────────
+
+contrato001.jpg     ✓ Completado
+factura002.png      ⏳ Procesando
+documento003.pdf    ⚠ Error
+carta004.jpg        ✓ Completado
+```
+
+Y eso se actualiza consultando la base de datos.
+
+---
+
+# 7. Aquí aparece una de las características MÁS importantes de Supabase: RLS
+
+RLS significa **Row Level Security**.
+
+Es una capa de seguridad de PostgreSQL que permite definir **quién puede acceder a qué filas**.
+
+Esto es fundamental para tu sistema.
+
+Por ejemplo:
+
+### Juan
+
+Puede ver:
+
+```text
+documentos de Juan
+```
+
+pero no:
+
+```text
+documentos de María
+```
+
+Entonces tenemos:
+
+```text
+             SUPABASE
+                 │
+        ┌────────┴────────┐
+        │                 │
+       JUAN             MARÍA
+        │                 │
+        ▼                 ▼
+   documentos         documentos
+      de Juan           de María
+```
+
+Juan intenta acceder a:
+
+```text
+documento_id = 523
+```
+
+que pertenece a María.
+
+Supabase puede rechazarlo aunque Juan intente manipular la petición desde el navegador.
+
+Esto es **mucho más seguro que simplemente ocultar el documento mediante JavaScript**.
+
+---
+
+# 8. Y aquí podemos crear los roles
+
+Por ejemplo:
+
+```text
+ADMIN
+SUPERVISOR
+OPERADOR
+CONSULTA
+```
+
+Podemos tener una tabla:
+
+```text
+perfiles
+```
+
+```text
+id_usuario
+nombre
+rol
+```
+
+Por ejemplo:
+
+```text
+001 | Carlos | admin
+002 | Juan   | operador
+003 | María  | consulta
+```
+
+Entonces tu aplicación puede comportarse diferente dependiendo del usuario.
+
+### Administrador
+
+```text
+Dashboard
+├── Documentos
+├── Usuarios
+├── Roles
+├── Base de datos
+├── Configuración
+└── Auditoría
+```
+
+### Operador
+
+```text
+Dashboard
+├── Mis documentos
+├── Subir documento
+└── Procesamiento
+```
+
+### Consulta
+
+```text
+Dashboard
+└── Documentos autorizados
+```
+
+---
+
+# 9. Incluso puedes tener un sistema de auditoría
+
+Esto sería muy recomendable para tu proyecto.
+
+Podemos tener:
+
+```text
+auditoria
+```
+
+Y registrar:
+
+```text
+2026-08-25 20:41
+Juan
+Subió contrato001.jpg
+
+2026-08-25 20:42
+Sistema
+Envió contrato001.jpg a Gemini
+
+2026-08-25 20:43
+Sistema
+OCR completado
+
+2026-08-25 20:44
+Juan
+Modificó transcripción
+
+2026-08-25 20:45
+Juan
+Descargó contrato001.docx
+```
+
+Así el administrador puede saber **quién hizo qué y cuándo**.
+
+---
+
+# 10. Entonces, ¿qué hace cada plataforma?
+
+En nuestro proyecto podríamos tener:
+
+### Vercel
+
+Se encarga principalmente de:
+
+```text
+TU PÁGINA
+HTML
+CSS
+JavaScript
+React, si lo usamos
+```
+
+Es decir:
+
+**lo que ve el usuario.**
+
+---
+
+### Supabase
+
+Se encarga de:
+
+```text
+👤 Usuarios
+🔐 Autenticación
+🛡️ Permisos
+🗄️ PostgreSQL
+📁 Archivos
+📊 Datos
+📜 Auditoría
+```
+
+Es decir:
+
+**la información y seguridad de tu aplicación.**
+
+---
+
+### Backend
+
+Se encarga de la lógica que no queremos exponer al navegador:
+
+```text
+procesamiento
+Gemini
+validaciones
+conversiones
+generación DOCX
+generación PDF
+etc.
+```
+
+---
+
+### Gemini
+
+Se encarga de:
+
+```text
+👁️ Interpretar imágenes
+📄 OCR
+🧠 Comprender documentos
+📊 Detectar tablas
+📝 Reconstruir estructura
+```
+
+---
+
+# 11. Y tu panel administrativo puede consultar Supabase
+
+Por ejemplo:
+
+```text
+                     ADMIN
+                       │
+                       ▼
+              PANEL ADMINISTRATIVO
+                       │
+             ┌─────────┼─────────┐
+             ▼         ▼         ▼
+          Usuarios  Documentos  Auditoría
+             │         │         │
+             └─────────┼─────────┘
+                       ▼
+                    SUPABASE
+```
+
+Desde el panel puedes tener:
+
+```text
+USUARIOS
+
+┌────────┬──────────────────┬────────────┬─────────┐
+│ Usuario│ Email            │ Rol        │ Estado  │
+├────────┼──────────────────┼────────────┼─────────┤
+│ Juan   │ juan@email.com   │ Operador   │ Activo  │
+│ María  │ maria@email.com  │ Consulta   │ Activo  │
+│ Pedro  │ pedro@email.com  │ Supervisor │ Activo  │
+└────────┴──────────────────┴────────────┴─────────┘
+
+          [ + CREAR USUARIO ]
+```
+
+Y al seleccionar a Juan:
+
+```text
+┌─────────────────────────────────┐
+│ JUAN                            │
+├─────────────────────────────────┤
+│ Rol:                            │
+│ [ OPERADOR ▼ ]                  │
+│                                 │
+│ ☑ Puede subir documentos        │
+│ ☑ Puede ejecutar OCR            │
+│ ☑ Puede editar documentos       │
+│ ☐ Puede eliminar documentos     │
+│ ☐ Puede administrar usuarios    │
+│                                 │
+│          [ GUARDAR ]            │
+└─────────────────────────────────┘
+```
+
+---
+
+# 12. Lo más interesante: no tienes que construir Supabase tú mismo
+
+No necesitas crear:
+
+```text
+servidor PostgreSQL
+servidor de autenticación
+servidor de almacenamiento
+sistema de sesiones
+API para la base de datos
+```
+
+Supabase ya te proporciona gran parte de eso.
+
+Tú construyes **tu aplicación encima**.
+
+Es parecido a tener:
+
+```text
+                    TU SISTEMA
+                        │
+        ┌───────────────┼────────────────┐
+        ▼               ▼                ▼
+      Vercel          Supabase          Gemini
+        │               │                │
+     Frontend      Datos/Usuarios       OCR
+```
+
+---
+
+## Para TU proyecto concreto
+
+Yo organizaría Supabase aproximadamente así:
+
+```text
+SUPABASE
+│
+├── Authentication
+│   └── Usuarios
+│
+├── Database
+│   ├── profiles
+│   ├── roles
+│   ├── documents
+│   ├── processing_jobs
+│   ├── document_results
+│   ├── audit_logs
+│   └── system_settings
+│
+├── Storage
+│   ├── original-documents
+│   ├── processed-documents
+│   └── temporary-files
+│
+└── Security
+    └── RLS
+```
+
+Y la aplicación quedaría:
+
+```text
+             ┌─────────────────────────┐
+             │        USUARIO          │
+             └────────────┬────────────┘
+                          │
+                          ▼
+             ┌─────────────────────────┐
+             │       TU WEB APP        │
+             │       Vercel            │
+             └────────────┬────────────┘
+                          │
+                          ▼
+             ┌─────────────────────────┐
+             │       SUPABASE          │
+             │                         │
+             │ Login                   │
+             │ Usuarios                │
+             │ Roles                   │
+             │ PostgreSQL              │
+             │ Archivos                │
+             │ Seguridad               │
+             └────────────┬────────────┘
+                          │
+                          ▼
+             ┌─────────────────────────┐
+             │        BACKEND          │
+             └────────────┬────────────┘
+                          │
+              ┌───────────┴───────────┐
+              ▼                       ▼
+       ┌──────────────┐        ┌──────────────┐
+       │    GEMINI    │        │ PDF/CONVERTER│
+       │ OCR + IA     │        │              │
+       └──────────────┘        └──────────────┘
+```
+
+**La gran ventaja es que podemos diseñar primero toda la estructura de Supabase y los permisos, y después construir el panel administrativo encima.** Eso evita que terminemos con una aplicación que funciona visualmente pero que tiene una seguridad débil.
+
+Además, Supabase utiliza PostgreSQL, por lo que si posteriormente el proyecto crece y necesitas mover o ampliar la infraestructura, no estás encerrado en una base de datos propietaria.
