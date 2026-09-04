@@ -1,0 +1,353 @@
+PDF24 tiene herramientas muy interesantes para nuestro proyecto:
+
+* PDF OCR
+* imágenes → PDF
+* PDF → imágenes
+* PDF → Word
+* PDF → DOCX
+* PDF → HTML
+* PDF → texto
+* conversión entre numerosos formatos
+* compresión, reparación, rotación, etc. ([PDF24 Tools][2])
+
+Además, PDF24 tiene widgets oficiales que pueden integrarse dentro de una página web. Por ejemplo, actualmente documentan widgets para **Convertir a PDF, PDF a otros formatos, fusionar y dividir PDF**, mediante su JavaScript oficial. ([PDF24 Tools][3])
+
+Pero hay una diferencia fundamental:
+
+```text
+                     NUESTRO SISTEMA
+
+                 ┌─────────────────┐
+                 │  Panel Web      │
+                 └────────┬────────┘
+                          │
+                 ┌────────▼────────┐
+                 │  Nuestro API    │
+                 └────────┬────────┘
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+              ▼                       ▼
+        ┌───────────┐           ┌───────────┐
+        │  Gemini   │           │ Supabase  │
+        │ OCR / IA  │           │ DB/Files  │
+        └───────────┘           └───────────┘
+```
+
+PDF24 quedaría como **herramienta complementaria**, no como el núcleo del sistema.
+
+---
+
+# Yo cambiaría un poco nuestra arquitectura
+
+Para conseguir lo que realmente estás buscando —**convertir documentos físicos escaneados/fotografiados en documentos digitales editables con la mayor precisión posible**— haría esto:
+
+```text
+                 ┌──────────────────┐
+                 │      USUARIO     │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 SUBE JPG / PNG / PDF
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │     SUPABASE     │
+                 │     STORAGE      │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │    BACKEND    │
+                  └───────┬───────┘
+                          │
+                 PREPROCESAMIENTO
+                          │
+                          ▼
+                  ┌───────────────┐
+                  │    GEMINI     │
+                  │ OCR + análisis│
+                  └───────┬───────┘
+                          │
+                          ▼
+                    TRANSCRIPCIÓN
+                          │
+              ┌───────────┼───────────┐
+              │           │           │
+              ▼           ▼           ▼
+             TXT         HTML        JSON
+              │           │           │
+              └───────────┼───────────┘
+                          ▼
+                  GENERADOR DOCX
+                          │
+                          ▼
+                  GENERADOR PDF
+                          │
+                          ▼
+                 SUPABASE STORAGE
+                          │
+                          ▼
+                     DESCARGA
+```
+
+Y **PDF24 etsraria como una herramienta adicional**, no necesariamente dentro del procesamiento automático.
+
+---
+
+# Pero hay una opción incluso mejor
+
+Si nuestra intención es que **nuestro servidor haga automáticamente las conversiones**, yo evitaría depender de PDF24 Online.
+
+La razón es sencilla:
+
+**PDF24 Creator sí tiene herramientas de línea de comandos.**
+
+Su documentación oficial muestra `pdf24-DocTool.exe`, con comandos para convertir archivos, convertir a PDF, convertir desde PDF, optimizar PDFs, etc. ([PDF24 Tools][4])
+
+Incluso tiene OCR para reconocer texto de PDF e imágenes y crear una capa de texto. ([PDF24 Tools][5])
+
+El problema es que esto está pensado para **Windows**, no para un backend gratuito típico de Render/Vercel.
+
+Por ejemplo:
+
+```text
+Render Linux
+      ❌
+PDF24 Creator
+      ↓
+Windows
+      ✅
+```
+
+Por eso no lo pondría directamente en nuestro servidor gratuito.
+
+---
+
+# Entonces ¿cómo conseguiríamos "PDF24 + Gemini"?
+
+Podemos construir nuestro propio sistema de procesamiento:
+
+### Fase 1 — Preparación
+
+El usuario sube:
+
+```text
+factura.jpg
+contrato.png
+documento.pdf
+```
+
+Nuestro backend puede:
+
+```text
+rotar
+↓
+corregir orientación
+↓
+mejorar contraste
+↓
+eliminar ruido
+↓
+corregir perspectiva
+↓
+aumentar resolución
+```
+
+Esto es **muy importante para OCR**.
+
+Una foto torcida, oscura o desenfocada puede producir mucho peor resultado que la misma imagen preprocesada.
+
+---
+
+### Fase 2 — OCR
+
+Enviamos la imagen/PDF a Gemini:
+
+```text
+          DOCUMENTO
+              │
+              ▼
+           GEMINI
+              │
+              ▼
+       ┌──────────────┐
+       │ Texto        │
+       │ Tablas       │
+       │ Títulos      │
+       │ Párrafos     │
+       │ Estructura   │
+       └──────────────┘
+```
+
+Y podemos pedirle que **no interprete ni resuma**, sino que reconstruya fielmente el documento.
+
+---
+
+### Fase 3 — Validación
+
+Aquí está una de las cosas que me parece más interesantes para tu proyecto.
+
+Podemos hacer:
+
+```text
+             DOCUMENTO
+                  │
+                  ▼
+              OCR Gemini
+                  │
+                  ▼
+             RESULTADO 1
+                  │
+                  ▼
+             OCR secundario
+                  │
+                  ▼
+             RESULTADO 2
+                  │
+                  ▼
+             COMPARADOR
+                  │
+         ┌────────┴────────┐
+         │                 │
+       IGUAL             DIFERENTE
+         │                 │
+         ▼                 ▼
+      ✓ OK           ⚠ REVISAR
+```
+
+Así, si un número aparece:
+
+```text
+Resultado Gemini:
+25.600,00
+
+Resultado OCR secundario:
+25.800,00
+```
+
+el sistema podría marcar:
+
+> ⚠️ Posible discrepancia detectada en línea 18.
+
+Eso sería **mucho más potente que simplemente utilizar PDF24 como conversor**.
+
+---
+
+# Y el panel administrativo que mencionamos antes podría controlar todo
+
+Por ejemplo:
+
+```text
+╔══════════════════════════════════════════════╗
+║           PROCESAMIENTO DE DOCUMENTOS        ║
+╠══════════════════════════════════════════════╣
+║                                              ║
+║ Documento       contrato_001.jpg             ║
+║ Usuario         operador_15                  ║
+║ Estado          ✓ Procesado                  ║
+║                                              ║
+║ OCR             Gemini                       ║
+║ Preprocesado    ✓                            ║
+║ Validación      ✓                            ║
+║ Confianza       96.8 %                       ║
+║                                              ║
+║ Resultado:                                   ║
+║                                              ║
+║ [ Ver original ]                             ║
+║ [ Ver OCR ]                                  ║
+║ [ Editar ]                                   ║
+║ [ Descargar DOCX ]                           ║
+║ [ Descargar PDF ]                            ║
+║                                              ║
+╚══════════════════════════════════════════════╝
+```
+
+Y en la base de datos podríamos guardar algo como:
+
+```text
+documents
+──────────────────────────────
+id
+user_id
+original_filename
+original_file
+mime_type
+pages
+ocr_engine
+ocr_status
+ocr_result
+confidence
+created_at
+processed_at
+```
+
+---
+
+# Una cosa más: PDF24 puede seguir apareciendo en nuestra interfaz
+
+Si el usuario tiene herramientas PDF dentro de nuestra página, **sí podemos estudiar los widgets oficiales de PDF24**.
+
+Por ejemplo, PDF24 documenta actualmente una integración de este estilo:
+
+```html
+<script src="https://tools.pdf24.org/static/js/widget.js"></script>
+
+<div id="convertPdfToWidgetContainer"></div>
+
+<script>
+pdf24.loadWidget('convert-pdf-to', {
+    containerId: 'convertPdfToWidgetContainer',
+    langCode: 'es'
+});
+</script>
+```
+
+Ese enfoque es diferente de tener una API privada: estamos **incrustando el widget que PDF24 proporciona oficialmente**. ([PDF24 Tools][3])
+
+[Widgets oficiales de PDF24 para integrar en sitios web](https://tools.pdf24.org/es/widgets?utm_source=chatgpt.com)
+
+---
+
+## Mi recomendación definitiva
+
+Yo construiría el proyecto en **tres niveles**:
+
+```text
+                 🟦 NIVEL 1
+              INTERFAZ WEB
+        HTML / CSS / JavaScript
+                    │
+                    ▼
+                 🟩 NIVEL 2
+                  BACKEND
+           Node.js / Python
+                    │
+          ┌─────────┼─────────┐
+          ▼         ▼         ▼
+      Supabase    Gemini    PDF tools
+          │         │         │
+          └─────────┼─────────┘
+                    ▼
+                 🟥 NIVEL 3
+               PROCESAMIENTO
+                    │
+        ┌───────────┼───────────┐
+        ▼           ▼           ▼
+       OCR       Conversión   Validación
+```
+
+**No haría que PDF24 sea el responsable de convertir "documentos físicos a documentos digitales".** Para eso utilizaría Gemini + procesamiento de imagen + un segundo mecanismo de validación.
+
+PDF24 lo utilizaría principalmente para **operaciones de PDF y conversiones**, aprovechando sus herramientas/widgets oficiales. Su propio catálogo incluye precisamente PDF OCR, PDF→Word, PDF→DOCX, PDF→HTML y muchas otras conversiones. ([PDF24 Tools][6])
+
+Y eso nos deja una arquitectura mucho más flexible: **si mañana PDF24 cambia sus herramientas o deja de ofrecer un widget, nuestro sistema principal sigue funcionando.**
+
+El siguiente paso lógico sería diseñar **la arquitectura completa del proyecto desde cero** —base de datos Supabase, usuarios/roles, panel administrativo, almacenamiento, subida de JPG/PNG/PDF, pipeline OCR Gemini, generación de DOCX/PDF, historial y auditoría— antes de escribir código.
+
+[1]: https://help.pdf24.org/en/forums/topic/api/?utm_source=chatgpt.com "API | PDF24 Help Center"
+[2]: https://tools.pdf24.org/es/?utm_source=chatgpt.com "PDF24 Tools: Herramientas PDF en línea gratuitas y fáciles de usar"
+[3]: https://tools.pdf24.org/es/widgets?utm_source=chatgpt.com "Widgets PDF para su propio sitio web - PDF24"
+[4]: https://creator.pdf24.org/manual/11/?utm_source=chatgpt.com "PDF24 Creator Manual"
+[5]: https://tools.pdf24.org/en/creator?utm_source=chatgpt.com "PDF24 Creator - Download - 100% free - PDF24"
+[6]: https://tools.pdf24.org/en/all-tools?utm_source=chatgpt.com "All Tools - 100% free - PDF24"
